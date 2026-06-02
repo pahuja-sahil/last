@@ -3,11 +3,11 @@ import requests
 import json
 
 # Define Stripe API endpoint and authentication
-STRIPE_API_ENDPOINT = "https://api.stripe.c
+STRIPE_API_ENDPOINT = "https://api.stripe.com/v1/payment_intents"
 STRIPE_SECRET_KEY = "sk_test_your_secret_key"  # Replace with your Stripe secret key
 
 # Define function to create payment intent
-de
+def create_payment_intent(amount, currency):
     """
     Create a payment intent using Stripe API.
     
@@ -79,7 +79,9 @@ def confirm_payment_intent(payment_intent_id):
 
 # Example usage
 if __name__ == "__main__":
-    amount = 1000  # Amount in centscurrency = "usd"
+    amount = 1000  # Amount in cents
+    currency = "usd"
+    payment_intent = create_payment_intent(amount, currency)
     if payment_intent:
         payment_intent_id = payment_intent["id"]
         confirmed_payment_intent = confirm_payment_intent(payment_intent_id)

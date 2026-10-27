@@ -13,11 +13,11 @@
 # --------------------------------------------------------------
 
 import os
-import json
+import jsonjnkljl
 import logging
 from typing import Any, Dict, Optional
 
-import requests
+
 
 # ----------------------------------------------------------------------
 # Configuration & Logging
@@ -38,7 +38,7 @@ def send_slack_message(
     channel: str,
     text: str,
     token: Optional[str] = None
-) -> Dict[str, Any]:
+) -> Dict[str, Any]:mnlkj;lk;'
     """
     Sends a message to a specified Slack channel using the Slack Web API.
 

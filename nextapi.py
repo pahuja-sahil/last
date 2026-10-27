@@ -17,7 +17,7 @@
 import os
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dic
 
 import requests
 
@@ -42,7 +42,7 @@ if not logger.handlers:                     # avoid duplicate handlers in notebo
 # We read it from the environment for security.  The token must have the
 # permissions required for the endpoints you intend to call (e.g.
 # `pages_manage_posts`, `pages_read_engagement`, `public_profile`, …).
-_META_TOKEN = os.getenv("META_ACCESS_TOKEN")
+
 if not _META_TOKEN:
     logger.error(
         "META_ACCESS_TOKEN environment variable not set. "
@@ -63,7 +63,7 @@ def _handle_response(resp: requests.Response) -> Dict[str, Any]:
     """
     try:
         resp.raise_for_status()
-    except requests.HTTPError as exc:
+    except requests.HTTPErr
         # Try to extract the error message returned by Meta
         try:
             error_info = resp.json().get("error", {})

@@ -14,9 +14,9 @@
 # --------------------------------------------------------------
 
 import os
-import loggingaaadadad
-from typing import Any, Dict
-
+import logging
+import requests
+from typing import Any, Dict, Optional
 
 # ----------------------------------------------------------------------
 # Logging Setup
@@ -53,8 +53,11 @@ class SlackClient:
         """
         self.token = token or os.getenv("SLACK_BOT_TOKEN")
         if not self.token:
-            logger.
+            logger.error(
                 "No Slack token provided or found in environment variable `SLACK_BOT_TOKEN`."
+            )
+            raise ValueError(
+                "Slack token is required. Set `SLACK_BOT_TOKEN` env var or pass token to SlackClient."
             )
 
         self.base_url = "https://slack.com/api"
@@ -105,133 +108,161 @@ class SlackClient:
             # Slack returns HTTP status 200 even on logical errors, with "ok": false
             if not data.get("ok"):
                 error_msg = data.get("error", "unknown_error")
-                logger.error(f"Slack API call failed on {endpoint}: {error_msg}")
                 raise SlackAPIError(error_msg, response_data=data)
 
             return data
 
-        except requests.exceptions.RequestException as req_err:
-            logger.error(f"Network error during Slack API request to {endpoint}: {req_err}")
-            raise
-        except SlackAPIError:
-            raise
-        except Exception as err:
-            logger.error(f"Unexpected error during Slack API request to {endpoint}: {err}")
-            raise
+        except requests.RequestException as exc:
+            logger.exception("Network error while calling Slack API")
+            raise SlackAPIError(str(exc)) from exc
+
+    # ------------------------------------------------------------------
+    # Public API methods
+    # ------------------------------------------------------------------
 
     def post_message(
         self,
         channel: str,
         text: str,
-        blocks: Optional[List[Dict[str, Any]]] = None,
+        blocks: Optional[list] = None,
         thread_ts: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Post a message to a Slack channel.
+        Send a message to a channel (or thread).
 
         Args:
-            channel (str): Channel ID (e.g. 'C12345678') or name.
-            text (str): Main message text or fallback summary for blocks.
-            blocks (list, optional): Array of Slack Block Kit layout components.
-            thread_ts (str, optional): Timestamp of parent message to reply in a thread.
+            channel (str): Channel ID (e.g., 'C12345678').
+            text (str): Plain‑text fallback message.
+            blocks (list, optional): Block Kit layout.
+            thread_ts (str, optional): Timestamp of parent message for threaded reply.
 
         Returns:
-            dict: Slack API response data containing message details.
+            dict: Slack API response.
         """
-        payload: Dict[str, Any] = {
-            "channel": channel,
-            "text": text,
-        }
+        payload: Dict[str, Any] = {"channel": channel, "text": text}
         if blocks:
             payload["blocks"] = blocks
         if thread_ts:
             payload["thread_ts"] = thread_ts
 
-        logger.info(f"Posting message to Slack channel: {channel}")
         return self._request("POST", "chat.postMessage", payload=payload)
 
-    def list_channels(
+    def list_conversations(
         self,
         types: str = "public_channel,private_channel",
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+        cursor: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """
-        Retrieve list of conversations/channels in the workspace.
+        List channels (public & private) in the workspace.
 
         Args:
-            types (str): Channel types to include (comma-separated).
-            limit (int): Maximum number of channels to fetch (max 1000).
+            types (str): Comma‑separated list of conversation types.
+            limit (int): Max number of items to return (max 1000).
+            cursor (str, optional): Pagination cursor.
 
         Returns:
-            list: Array of channel dictionary objects.
+            dict: Slack API response containing `channels` list.
         """
-        params = {
-            "types": types,
-            "limit": limit,
-        }
-        logger.info("Retrieving Slack channel list...")
-        response = self._request("GET", "conversations.list", params=params)
-        return response.get("channels", [])
+        params = {"types": types, "limit": limit}
+        if cursor:
+            params["cursor"] = cursor
 
-    def get_channel_history(
+        return self._request("GET", "conversations.list", params=params)
+
+    def get_history(
         self,
         channel: str,
-        limit: int = 100,
-    ) -> List[Dict[str, Any]]:
+        limit: int = 200,
+        oldest: Optional[float] = None,
+        latest: Optional[float] = None,
+        cursor: Optional[str] = None,
+    ) -> Dict[str, Any]:
         """
-        Fetch recent messages from a specific channel.
+        Retrieve message history for a channel.
 
         Args:
             channel (str): Channel ID.
-            limit (int): Number of messages to retrieve.
+            limit (int): Number of messages to fetch (max 1000).
+            oldest (float, optional): Unix timestamp to start from.
+            latest (float, optional): Unix timestamp to end at.
+            cursor (str, optional): Pagination cursor.
 
         Returns:
-            list: Array of message dictionary objects.
+            dict: Slack API response containing `messages`.
         """
-        params = {
-            "channel": channel,
-            "limit": limit,
-        }
-        logger.info(f"Fetching channel history for channel: {channel}")
-        response = self._request("GET", "conversations.history", params=params)
-        return response.get("messages", [])
+        params: Dict[str, Any] = {"channel": channel, "limit": limit}
+        if oldest:
+            params["oldest"] = oldest
+        if latest:
+            params["latest"] = latest
+        if cursor:
+            params["cursor"] = cursor
+
+        return self._request("GET", "conversations.history", params=params)
 
     def add_reaction(
         self,
         channel: str,
-        name: str,
         timestamp: str,
+        name: str,
     ) -> Dict[str, Any]:
         """
         Add an emoji reaction to a message.
 
         Args:
-            channel (str): Channel ID where the message exists.
-            name (str): Emoji reaction name (without colons, e.g. 'thumbsup').
-            timestamp (str): Timestamp (`ts`) of the message.
+            channel (str): Channel ID where the message lives.
+            timestamp (str): Message timestamp (`ts` value).
+            name (str): Emoji name (e.g., 'thumbsup').
 
         Returns:
-            dict: Slack API confirmation response.
+            dict: Slack API response.
         """
-        payload = {
-            "channel": channel,
-            "name": name,
-            "timestamp": timestamp,
-        }
-        logger.info(f"Adding reaction ':{name}:' to message {timestamp} in {channel}")
+        payload = {"channel": channel, "timestamp": timestamp, "name": name}
         return self._request("POST", "reactions.add", payload=payload)
 
     def get_user_info(self, user_id: str) -> Dict[str, Any]:
         """
-        Get profile information for a Slack user.
+        Retrieve metadata for a user.
 
         Args:
-            user_id (str): User ID (e.g. 'U12345678').
+            user_id (str): Slack user ID (e.g., 'U12345678').
 
         Returns:
-            dict: User profile data dictionary.
+            dict: Slack API response containing `user` object.
         """
         params = {"user": user_id}
-        logger.info(f"Fetching profile for Slack user: {user_id}")
-        response = self._request("GET", "users.info", params=params)
-        return response.get("user", {})
+        return self._request("GET", "users.info", params=params)
+
+
+# ----------------------------------------------------------------------
+# Convenience wrapper functions (optional, for quick use)
+# ----------------------------------------------------------------------
+def send_simple_message(channel: str, text: str, token: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Quick helper to send a plain‑text message without instantiating the client manually.
+
+    Args:
+        channel (str): Channel ID.
+        text (str): Message text.
+        token (str, optional): Slack Bot token. If omitted, env var `SLACK_BOT_TOKEN` is used.
+
+    Returns:
+        dict: Slack API response.
+    """
+    client = SlackClient(token=token)
+    return client.post_message(channel=channel, text=text)
+
+
+def list_all_channels(token: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Quick helper to list all public and private channels.
+
+    Args:
+        token (str, optional): Slack Bot token.
+
+    Returns:
+        dict: Slack API response.
+    """
+    client = SlackClient(token=token)
+    return client.list_conversations()

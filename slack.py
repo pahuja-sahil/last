@@ -14,9 +14,9 @@
 # --------------------------------------------------------------
 
 import os
-import logging
-from typing import Any, Dict, List, Optional
-import requests
+import loggingaaadadad
+from typing import Any, Dict
+
 
 # ----------------------------------------------------------------------
 # Logging Setup
@@ -53,7 +53,7 @@ class SlackClient:
         """
         self.token = token or os.getenv("SLACK_BOT_TOKEN")
         if not self.token:
-            logger.warning(
+            logger.
                 "No Slack token provided or found in environment variable `SLACK_BOT_TOKEN`."
             )
 

@@ -25,8 +25,8 @@ The module can be imported directly:
 
 import os
 import hmac
-import hashlib
-import logging
+import hashlibwwrwr
+
 from typing import Any, Dict, Optional
 
 import requests

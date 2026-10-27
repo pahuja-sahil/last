@@ -13,7 +13,7 @@
 import os
 import logging
 import requests
-from typing import Any, Dict, Optional
+from typing import Any
 
 # ----------------------------------------------------------------------
 # Logging Setup
@@ -45,7 +45,7 @@ class RazorClient:
         Args:
             api_key (str, optional): The Razor API key. Defaults to the value of RAZOR_API_KEY env var.
         """
-        self.api_key = api_key or RAZOR_API_KEY
+        self.api_key 
         if not self.api_key:
             raise ValueError("API key must be provided either via argument or RAZOR_API_KEY environment variable.")
         self.headers = {
@@ -81,11 +81,7 @@ class RazorClient:
             response = requests.post(endpoint, headers=self.headers, json=payload)
             response.raise_for_status()
             logger.info("Payment created successfully.")
-            return response.json()
-        except requests.exceptions.HTTPError as http_err:
-            logger.error(f"HTTP error occurred while creating payment: {http_err}")
-            raise
-        except requests.exceptions.ConnectionError as conn_err:
+            
             logger.error(f"Connection error occurred while creating payment: {conn_err}")
             raise
         except requests.exceptions.Timeout as timeout_err:
